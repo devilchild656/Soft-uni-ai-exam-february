@@ -75,6 +75,7 @@ function onGradient(colors: string[]): void {
           :natural-height="originalImage.height"
           :crop-x="cropX"
           :crop-y="cropY"
+          :target-format="selectedFormat"
           @crop-change="(x, y) => emit('cropChange', x, y)"
         />
 

@@ -40,6 +40,19 @@ export interface ProcessedImage {
   format: InstagramFormat
 }
 
+export interface CaptionSuggestions {
+  /** 2-3 sentence Instagram caption */
+  caption: string
+  /** Hashtags without the '#' symbol */
+  hashtags: string[]
+  /** Template for tagging a model, e.g. "Model: @{model_handle} ✨" */
+  modelTemplate: string
+  /** Template for crediting a photographer, e.g. "📸 Photo: @{photographer_handle}" */
+  photographerTemplate: string
+  /** Template for tagging a location, e.g. "📍 {City}, {Country}" */
+  placeTemplate: string
+}
+
 export interface ImageItem {
   id: string
   originalFile: File
@@ -56,4 +69,6 @@ export interface ImageItem {
   isProcessing: boolean
   width: number
   height: number
+  suggestions: CaptionSuggestions | null
+  isSuggestingCaption: boolean
 }

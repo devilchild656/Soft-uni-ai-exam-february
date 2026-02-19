@@ -6,6 +6,7 @@ import { useImageProcessor } from '@/composables/useImageProcessor'
 import { useColorExtractor } from '@/composables/useColorExtractor'
 import { useImageExporter } from '@/composables/useImageExporter'
 import { useGridExporter } from '@/composables/useGridExporter'
+import { useAiSuggestions } from '@/composables/useAiSuggestions'
 
 const MAX_IMAGES = 9
 
@@ -22,6 +23,7 @@ export const useImageStore = defineStore('image', () => {
   const { extractColors } = useColorExtractor()
   const { exportImage, isExporting } = useImageExporter()
   const { exportAll: exportAllImages, isExportingAll } = useGridExporter()
+  const captionError = ref<string | null>(null)
 
   // --- Computed ---
 
@@ -94,6 +96,8 @@ export const useImageStore = defineStore('image', () => {
         isProcessing: true,
         width: 0,
         height: 0,
+        suggestions: null,
+        isSuggestingCaption: false,
       }
 
       images.value.push(placeholder)
@@ -261,6 +265,24 @@ export const useImageStore = defineStore('image', () => {
     gridLayout.value[to] = temp
   }
 
+  async function generateCaptions(id: string): Promise<void> {
+    const item = images.value.find((i) => i.id === id)
+    if (!item?.processedDataUrl) return
+
+    captionError.value = null
+    updateImage(id, { isSuggestingCaption: true })
+
+    const { generateSuggestions, error: aiErr } = useAiSuggestions()
+    const suggestions = await generateSuggestions(item.processedDataUrl)
+
+    updateImage(id, {
+      isSuggestingCaption: false,
+      ...(suggestions ? { suggestions } : {}),
+    })
+
+    if (aiErr.value) captionError.value = aiErr.value
+  }
+
   function assignToGrid(imageId: string, cellIndex: number): void {
     // Remove existing assignment for this image
     for (let i = 0; i < gridLayout.value.length; i++) {
@@ -294,6 +316,7 @@ export const useImageStore = defineStore('image', () => {
     isExporting,
     isExportingAll,
     error,
+    captionError,
     hasImages,
     canExport,
     canExportAll,
@@ -303,6 +326,7 @@ export const useImageStore = defineStore('image', () => {
     setBackground,
     setFillMode,
     setCropOffset,
+    generateCaptions,
     triggerExport,
     triggerExportAll,
     removeImage,

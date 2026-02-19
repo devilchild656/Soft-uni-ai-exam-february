@@ -5,6 +5,7 @@ import type { ProcessedImage } from '@/types/image.types'
 import ImageUploader from '@/components/molecules/ImageUploader.vue'
 import ImageList from '@/components/molecules/ImageList.vue'
 import ImageEditorPanel from '@/components/organisms/ImageEditorPanel.vue'
+import CaptionPanel from '@/components/organisms/CaptionPanel.vue'
 import InstagramGridPreview from '@/components/organisms/InstagramGridPreview.vue'
 import GridBigPreview from '@/components/organisms/GridBigPreview.vue'
 import ExportPanel from '@/components/organisms/ExportPanel.vue'
@@ -128,6 +129,20 @@ const activeProcessedImage = computed<ProcessedImage | null>(() => {
             @background-selected="store.setBackground($event)"
             @fill-mode-selected="store.setFillMode($event)"
             @crop-change="(x, y) => store.setCropOffset(x, y)"
+          />
+        </section>
+
+        <!-- Section 2b: AI Caption & Hashtags -->
+        <section
+          v-if="store.activeImage"
+          class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+        >
+          <CaptionPanel
+            :suggestions="store.activeImage.suggestions"
+            :is-generating="store.activeImage.isSuggestingCaption"
+            :error="store.captionError"
+            :can-generate="!!store.activeImage.processedDataUrl && !store.activeImage.isProcessing"
+            @generate="store.generateCaptions(store.activeImageId!)"
           />
         </section>
 
