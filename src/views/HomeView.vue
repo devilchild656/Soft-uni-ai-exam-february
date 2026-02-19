@@ -6,6 +6,7 @@ import ImageUploader from '@/components/molecules/ImageUploader.vue'
 import ImageList from '@/components/molecules/ImageList.vue'
 import ImageEditorPanel from '@/components/organisms/ImageEditorPanel.vue'
 import InstagramGridPreview from '@/components/organisms/InstagramGridPreview.vue'
+import GridBigPreview from '@/components/organisms/GridBigPreview.vue'
 import ExportPanel from '@/components/organisms/ExportPanel.vue'
 
 const store = useImageStore()
@@ -118,14 +119,19 @@ const activeProcessedImage = computed<ProcessedImage | null>(() => {
             :processed-image="activeProcessedImage"
             :selected-format="store.activeImage.selectedFormat"
             :selected-background="store.activeImage.selectedBackground"
+            :fill-mode="store.activeImage.fillMode"
+            :crop-x="store.activeImage.cropX"
+            :crop-y="store.activeImage.cropY"
             :color-palette="store.activeImage.colorPalette"
             :is-processing="store.activeImage.isProcessing"
             @format-selected="store.setFormat($event)"
             @background-selected="store.setBackground($event)"
+            @fill-mode-selected="store.setFillMode($event)"
+            @crop-change="(x, y) => store.setCropOffset(x, y)"
           />
         </section>
 
-        <!-- Section 3: Instagram grid preview with drag-and-drop -->
+        <!-- Section 3: Small Instagram profile grid preview (with drag-and-drop) -->
         <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <InstagramGridPreview
             :grid-layout="store.gridLayout"
@@ -136,7 +142,18 @@ const activeProcessedImage = computed<ProcessedImage | null>(() => {
           />
         </section>
 
-        <!-- Section 4: Export panel for active image -->
+        <!-- Section 4: Full-width big grid preview -->
+        <section
+          v-if="store.gridImageCount > 0"
+          class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
+        >
+          <GridBigPreview
+            :grid-layout="store.gridLayout"
+            :image-map="store.imageMap"
+          />
+        </section>
+
+        <!-- Section 5: Export panel -->
         <section
           v-if="store.activeImage?.processedDataUrl"
           class="max-w-sm"
@@ -145,7 +162,11 @@ const activeProcessedImage = computed<ProcessedImage | null>(() => {
             :selected-format="store.activeImage.selectedFormat"
             :can-export="store.canExport"
             :is-exporting="store.isExporting"
+            :grid-image-count="store.gridImageCount"
+            :can-export-all="store.canExportAll"
+            :is-exporting-all="store.isExportingAll"
             @export="store.triggerExport()"
+            @export-all="store.triggerExportAll()"
           />
         </section>
 

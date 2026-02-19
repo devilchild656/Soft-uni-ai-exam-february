@@ -1,5 +1,5 @@
 import { shallowRef } from 'vue'
-import type { InstagramFormat, BackgroundOption } from '@/types/image.types'
+import type { InstagramFormat, BackgroundOption, FillMode } from '@/types/image.types'
 import { FORMAT_DIMENSIONS } from '@/types/image.types'
 
 export function useImageExporter() {
@@ -9,7 +9,10 @@ export function useImageExporter() {
     img: HTMLImageElement,
     format: InstagramFormat,
     background: BackgroundOption,
+    fillMode: FillMode = 'background',
     filename?: string,
+    cropX = 0.5,
+    cropY = 0.5,
   ): Promise<void> {
     isExporting.value = true
 
@@ -23,41 +26,15 @@ export function useImageExporter() {
       const ctx = exportCanvas.getContext('2d')
       if (!ctx) throw new Error('Export canvas context unavailable')
 
-      // Fill background
-      if (background.type === 'solid') {
-        ctx.fillStyle = background.colors[0] ?? '#000000'
-        ctx.fillRect(0, 0, targetW, targetH)
-      } else {
-        const colors =
-          background.colors.length >= 2
-            ? background.colors
-            : [background.colors[0], darkenHex(background.colors[0])]
-        const gradient = ctx.createLinearGradient(0, 0, 0, targetH)
-        colors.forEach((c, i) => gradient.addColorStop(i / (colors.length - 1), c))
-        ctx.fillStyle = gradient
-        ctx.fillRect(0, 0, targetW, targetH)
-      }
-
-      // Scale and center (object-fit: contain)
-      const srcRatio = img.naturalWidth / img.naturalHeight
-      const dstRatio = targetW / targetH
-      let drawW: number
-      let drawH: number
-
-      if (srcRatio > dstRatio) {
-        drawW = targetW
-        drawH = targetW / srcRatio
-      } else {
-        drawH = targetH
-        drawW = targetH * srcRatio
-      }
-
-      const offsetX = (targetW - drawW) / 2
-      const offsetY = (targetH - drawH) / 2
-
       ctx.imageSmoothingEnabled = true
       ctx.imageSmoothingQuality = 'high'
-      ctx.drawImage(img, offsetX, offsetY, drawW, drawH)
+
+      if (fillMode === 'crop') {
+        drawCover(ctx, img, targetW, targetH, cropX, cropY)
+      } else {
+        fillBackground(ctx, background, targetW, targetH)
+        drawContain(ctx, img, targetW, targetH)
+      }
 
       const blob = await new Promise<Blob>((resolve, reject) => {
         exportCanvas.toBlob(
@@ -83,6 +60,75 @@ export function useImageExporter() {
   }
 
   return { exportImage, isExporting }
+}
+
+function drawContain(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  targetW: number,
+  targetH: number,
+): void {
+  const srcRatio = img.naturalWidth / img.naturalHeight
+  const dstRatio = targetW / targetH
+  let drawW: number
+  let drawH: number
+
+  if (srcRatio > dstRatio) {
+    drawW = targetW
+    drawH = targetW / srcRatio
+  } else {
+    drawH = targetH
+    drawW = targetH * srcRatio
+  }
+
+  ctx.drawImage(img, (targetW - drawW) / 2, (targetH - drawH) / 2, drawW, drawH)
+}
+
+function drawCover(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  targetW: number,
+  targetH: number,
+  cropX: number,
+  cropY: number,
+): void {
+  const srcRatio = img.naturalWidth / img.naturalHeight
+  const dstRatio = targetW / targetH
+  let drawW: number
+  let drawH: number
+
+  if (srcRatio > dstRatio) {
+    drawH = targetH
+    drawW = targetH * srcRatio
+  } else {
+    drawW = targetW
+    drawH = targetW / srcRatio
+  }
+
+  const offsetX = -((drawW - targetW) * cropX)
+  const offsetY = -((drawH - targetH) * cropY)
+  ctx.drawImage(img, offsetX, offsetY, drawW, drawH)
+}
+
+function fillBackground(
+  ctx: CanvasRenderingContext2D,
+  background: BackgroundOption,
+  w: number,
+  h: number,
+): void {
+  if (background.type === 'solid') {
+    ctx.fillStyle = background.colors[0] ?? '#000000'
+    ctx.fillRect(0, 0, w, h)
+  } else {
+    const colors =
+      background.colors.length >= 2
+        ? background.colors
+        : [background.colors[0], darkenHex(background.colors[0])]
+    const gradient = ctx.createLinearGradient(0, 0, 0, h)
+    colors.forEach((c, i) => gradient.addColorStop(i / (colors.length - 1), c))
+    ctx.fillStyle = gradient
+    ctx.fillRect(0, 0, w, h)
+  }
 }
 
 function darkenHex(hex: string): string {

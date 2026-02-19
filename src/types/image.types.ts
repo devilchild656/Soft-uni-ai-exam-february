@@ -18,6 +18,9 @@ export const FORMAT_RATIOS: Record<InstagramFormat, number> = {
 
 export type BackgroundType = 'solid' | 'gradient'
 
+/** How the image fills the Instagram frame */
+export type FillMode = 'background' | 'crop'
+
 export interface BackgroundOption {
   type: BackgroundType
   colors: string[]
@@ -44,6 +47,11 @@ export interface ImageItem {
   processedDataUrl: string | null
   selectedFormat: InstagramFormat
   selectedBackground: BackgroundOption
+  fillMode: FillMode
+  /** Horizontal crop anchor: 0 = left edge, 0.5 = center, 1 = right edge */
+  cropX: number
+  /** Vertical crop anchor: 0 = top edge, 0.5 = center, 1 = bottom edge */
+  cropY: number
   colorPalette: ColorPalette | null
   isProcessing: boolean
   width: number

@@ -1,10 +1,11 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import type { ImageItem, BackgroundOption } from '@/types/image.types'
+import type { ImageItem, BackgroundOption, FillMode } from '@/types/image.types'
 import { InstagramFormat } from '@/types/image.types'
 import { useImageProcessor } from '@/composables/useImageProcessor'
 import { useColorExtractor } from '@/composables/useColorExtractor'
 import { useImageExporter } from '@/composables/useImageExporter'
+import { useGridExporter } from '@/composables/useGridExporter'
 
 const MAX_IMAGES = 9
 
@@ -20,10 +21,19 @@ export const useImageStore = defineStore('image', () => {
   const { detectFormat, processImage } = useImageProcessor()
   const { extractColors } = useColorExtractor()
   const { exportImage, isExporting } = useImageExporter()
+  const { exportAll: exportAllImages, isExportingAll } = useGridExporter()
 
   // --- Computed ---
 
   const hasImages = computed(() => images.value.length > 0)
+
+  const gridImageCount = computed(
+    () => gridLayout.value.filter((id) => id !== null).length,
+  )
+
+  const canExportAll = computed(
+    () => gridImageCount.value > 0 && !isExportingAll.value && !isExporting.value,
+  )
 
   const activeImage = computed<ImageItem | null>(
     () => images.value.find((img) => img.id === activeImageId.value) ?? null,
@@ -77,6 +87,9 @@ export const useImageStore = defineStore('image', () => {
         processedDataUrl: null,
         selectedFormat: InstagramFormat.PORTRAIT,
         selectedBackground: { type: 'solid', colors: ['#6b7280'] },
+        fillMode: 'background',
+        cropX: 0.5,
+        cropY: 0.5,
         colorPalette: null,
         isProcessing: true,
         width: 0,
@@ -122,7 +135,7 @@ export const useImageStore = defineStore('image', () => {
         height: img.naturalHeight,
       })
 
-      const dataUrl = await renderImage(img, detectedFormat, background)
+      const dataUrl = await renderImage(img, detectedFormat, background, 'background')
       updateImage(id, { processedDataUrl: dataUrl, isProcessing: false })
     } catch (e) {
       updateImage(id, { isProcessing: false })
@@ -136,7 +149,14 @@ export const useImageStore = defineStore('image', () => {
     if (!img || !item) return
 
     try {
-      const dataUrl = await renderImage(img, item.selectedFormat, item.selectedBackground)
+      const dataUrl = await renderImage(
+        img,
+        item.selectedFormat,
+        item.selectedBackground,
+        item.fillMode,
+        item.cropX,
+        item.cropY,
+      )
       updateImage(id, { processedDataUrl: dataUrl, isProcessing: false })
     } catch (e) {
       updateImage(id, { isProcessing: false })
@@ -148,10 +168,13 @@ export const useImageStore = defineStore('image', () => {
     img: HTMLImageElement,
     format: InstagramFormat,
     background: BackgroundOption,
+    fillMode: FillMode,
+    cropX = 0.5,
+    cropY = 0.5,
   ): Promise<string> {
     return new Promise<string>((resolve) => {
       requestAnimationFrame(() => {
-        resolve(processImage(img, format, background))
+        resolve(processImage(img, format, background, fillMode, cropX, cropY))
       })
     })
   }
@@ -174,13 +197,41 @@ export const useImageStore = defineStore('image', () => {
     void reprocessImage(id)
   }
 
+  function setFillMode(fillMode: FillMode): void {
+    const id = activeImageId.value
+    if (!id) return
+    updateImage(id, { fillMode, isProcessing: true })
+    void reprocessImage(id)
+  }
+
+  let cropDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
+  function setCropOffset(x: number, y: number): void {
+    const id = activeImageId.value
+    if (!id) return
+    updateImage(id, { cropX: x, cropY: y })
+    if (cropDebounceTimer) clearTimeout(cropDebounceTimer)
+    cropDebounceTimer = setTimeout(() => {
+      cropDebounceTimer = null
+      void reprocessImage(id)
+    }, 80)
+  }
+
   async function triggerExport(): Promise<void> {
     const id = activeImageId.value
     if (!id) return
     const img = imageElements.get(id)
     const item = images.value.find((i) => i.id === id)
     if (!img || !item) return
-    await exportImage(img, item.selectedFormat, item.selectedBackground)
+    await exportImage(img, item.selectedFormat, item.selectedBackground, item.fillMode, undefined, item.cropX, item.cropY)
+  }
+
+  async function triggerExportAll(): Promise<void> {
+    await exportAllImages(
+      gridLayout.value,
+      (id) => images.value.find((i) => i.id === id),
+      (id) => imageElements.get(id),
+    )
   }
 
   function removeImage(id: string): void {
@@ -239,15 +290,21 @@ export const useImageStore = defineStore('image', () => {
     activeImage,
     gridLayout,
     imageMap,
+    gridImageCount,
     isExporting,
+    isExportingAll,
     error,
     hasImages,
     canExport,
+    canExportAll,
     addImages,
     setActiveImage,
     setFormat,
     setBackground,
+    setFillMode,
+    setCropOffset,
     triggerExport,
+    triggerExportAll,
     removeImage,
     swapGridCells,
     assignToGrid,
