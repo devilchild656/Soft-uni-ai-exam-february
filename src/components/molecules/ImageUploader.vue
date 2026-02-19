@@ -4,22 +4,22 @@ import AppFileInput from '@/components/atoms/AppFileInput.vue'
 import AppButton from '@/components/atoms/AppButton.vue'
 
 const emit = defineEmits<{
-  fileSelected: [file: File]
+  filesSelected: [files: File[]]
 }>()
 
 const isDragging = ref(false)
-const fileName = ref<string | null>(null)
 
-function onFileSelected(file: File): void {
-  fileName.value = file.name
-  emit('fileSelected', file)
+function onFilesSelected(files: File[]): void {
+  emit('filesSelected', files)
 }
 
 function onDrop(event: DragEvent): void {
   isDragging.value = false
-  const file = event.dataTransfer?.files?.[0]
-  if (file && file.type.startsWith('image/')) {
-    onFileSelected(file)
+  const files = Array.from(event.dataTransfer?.files ?? []).filter((f) =>
+    f.type.startsWith('image/'),
+  )
+  if (files.length > 0) {
+    onFilesSelected(files)
   }
 }
 
@@ -59,24 +59,21 @@ function onDragLeave(): void {
       </svg>
 
       <div class="space-y-1">
-        <p class="text-base font-medium text-gray-700">
-          {{ fileName ? 'Image loaded' : 'Upload an image' }}
-        </p>
-        <p v-if="fileName" class="text-sm text-indigo-600 font-medium truncate max-w-xs">
-          {{ fileName }}
-        </p>
-        <p v-else class="text-sm text-gray-500">Drag and drop or click to browse</p>
+        <p class="text-base font-medium text-gray-700">Upload images for Instagram</p>
+        <p class="text-sm text-gray-500">Drag and drop or click to browse — up to 9 images</p>
       </div>
 
-      <AppFileInput accept="image/jpeg,image/png,image/webp,image/gif" @file-selected="onFileSelected">
+      <AppFileInput
+        accept="image/jpeg,image/png,image/webp"
+        :multiple="true"
+        @files-selected="onFilesSelected"
+      >
         <template #default="{ trigger }">
-          <AppButton variant="secondary" @click="trigger">
-            {{ fileName ? 'Change image' : 'Browse files' }}
-          </AppButton>
+          <AppButton variant="secondary" @click="trigger">Browse files</AppButton>
         </template>
       </AppFileInput>
 
-      <p class="text-xs text-gray-400">JPG, PNG, WEBP supported · Max recommended 20MB</p>
+      <p class="text-xs text-gray-400">JPG, PNG, WEBP supported · Max recommended 20MB each</p>
     </div>
   </div>
 </template>

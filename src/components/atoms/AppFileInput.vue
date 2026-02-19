@@ -3,14 +3,16 @@ import { ref } from 'vue'
 
 interface Props {
   accept?: string
+  multiple?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   accept: 'image/*',
+  multiple: false,
 })
 
 const emit = defineEmits<{
-  fileSelected: [file: File]
+  filesSelected: [files: File[]]
 }>()
 
 const inputRef = ref<HTMLInputElement | null>(null)
@@ -21,9 +23,9 @@ function trigger(): void {
 
 function handleChange(event: Event): void {
   const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (file) {
-    emit('fileSelected', file)
+  const files = Array.from(target.files ?? [])
+  if (files.length > 0) {
+    emit('filesSelected', files)
     target.value = ''
   }
 }
@@ -33,7 +35,14 @@ defineExpose({ trigger })
 
 <template>
   <div>
-    <input ref="inputRef" type="file" :accept="accept" class="sr-only" @change="handleChange" />
+    <input
+      ref="inputRef"
+      type="file"
+      :accept="accept"
+      :multiple="multiple"
+      class="sr-only"
+      @change="handleChange"
+    />
     <slot :trigger="trigger" />
   </div>
 </template>

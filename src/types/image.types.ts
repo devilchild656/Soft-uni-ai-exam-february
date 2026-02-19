@@ -36,3 +36,16 @@ export interface ProcessedImage {
   height: number
   format: InstagramFormat
 }
+
+export interface ImageItem {
+  id: string
+  originalFile: File
+  originalUrl: string
+  processedDataUrl: string | null
+  selectedFormat: InstagramFormat
+  selectedBackground: BackgroundOption
+  colorPalette: ColorPalette | null
+  isProcessing: boolean
+  width: number
+  height: number
+}
